@@ -1,4 +1,4 @@
-module Server_GoLang
+module Server_TCP
 
 go 1.23.1
 
