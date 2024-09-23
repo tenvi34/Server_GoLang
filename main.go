@@ -50,7 +50,7 @@ func handleConnection(conn net.Conn) {
 		}
 
 		// Protocol Buffers 메시지를 파싱합니다
-		message := &pb.PlayerPosition{}
+		message := &pb.GameMessage{}
 		err = proto.Unmarshal(messageBuf, message)
 		if err != nil {
 			log.Printf("Failed to unmarshal message: %v", err)
@@ -76,5 +76,13 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func processMessage(message *pb.PlayerPosition) {
+func processMessage(message *pb.GameMessage) {
+	switch msg := message.Message.(type) {
+	case *pb.GameMessage_PlayerPosition:
+		pos := msg.PlayerPosition
+		fmt.Println("(%f, %f, %f)", pos.X, pos.Y, pos.Z)
+	case *pb.GameMessage_Chat:
+	default:
+		panic(fmt.Sprintf("unexpected messages.isGameMessage_Message: %#v", msg))
+	}
 }
