@@ -1,69 +1,80 @@
 package main
 
 import (
-	"context"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
-	"sync"
 
-	pb "Server_TCP/messages"
+	//pb "Server_TCP/messages"
 
-	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
-type gameServer struct {
-	pb.UnimplementedGameServiceServer
-	mu      sync.Mutex
-	players map[int32]*pb.PlayerPosition
-}
-
-func (s *gameServer) UpdatePosition(ctx context.Context, pos *pb.PlayerPosition) (*pb.GameState, error) {
-
-	// 스레드를 안전하게 락을 건다.
-	s.mu.Lock()
-
-	// 함수가 끝날 때 락을 푼다.
-	defer s.mu.Unlock()
-
-	// Server의 players의 pos를 업데이트
-	s.players[pos.PlayerId] = pos
-
-	// 저장할 State를 생성
-	gameState := &pb.GameState{
-		Players: make([]*pb.PlayerPosition, 0, len(s.players)),
-	}
-
-	// 플레이어들의 목록을 append
-	for _, player := range s.players {
-		gameState.Players = append(gameState.Players, player)
-	}
-
-	log.Printf("Updated position for player %d: (%f, %f, %f)", pos.PlayerId, pos.X, pos.Y, pos.Z)
-
-	// gameState를 반환하고 error는 nil이다.
-	return gameState, nil
-}
-
 func main() {
-	// net 패키지 안에 listen을 호출하면 자동으로 tcp 서버가 생성
-	lis, err := net.Listen("tcp", ":50051")
+	listener, err := net.Listen("tcp", ":8888")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
+	defer listener.Close()
+	fmt.Println("Server is listening on :8888")
 
-	// grpc에 있는 API인(자동 생성) NewServer을 만든다.
-	s := grpc.NewServer()
-
-	// 서버로 등록
-	pb.RegisterGameServiceServer(s, &gameServer{
-		players: make(map[int32]*pb.PlayerPosition),
-	})
-
-	fmt.Println("Game server is running on :50051")
-
-	// 네트워크를 유지
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("Failed to accept connection: %v", err)
+			continue
+		}
+		go handleConnection(conn)
 	}
+}
+
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+	for {
+		// 메시지 길이를 먼저 읽습니다 (4바이트)
+		lengthBuf := make([]byte, 4)
+		_, err := conn.Read(lengthBuf)
+		if err != nil {
+			log.Printf("Failed to read message length: %v", err)
+			return
+		}
+		length := binary.BigEndian.Uint32(lengthBuf)
+
+		// 메시지 본문을 읽습니다
+		messageBuf := make([]byte, length)
+		_, err = conn.Read(messageBuf)
+		if err != nil {
+			log.Printf("Failed to read message body: %v", err)
+			return
+		}
+
+		// Protocol Buffers 메시지를 파싱합니다
+		message := &pb.PlayerPosition{}
+		err = proto.Unmarshal(messageBuf, message)
+		if err != nil {
+			log.Printf("Failed to unmarshal message: %v", err)
+			continue
+		}
+
+		// 메시지 처리
+		processMessage(message)
+
+		// 응답 메시지 생성 및 전송 (예: 에코)
+		response, err := proto.Marshal(message)
+		if err != nil {
+			log.Printf("Failed to marshal response: %v", err)
+			continue
+		}
+
+		// 메시지 길이를 먼저 보냅니다
+		binary.BigEndian.PutUint32(lengthBuf, uint32(len(response)))
+		conn.Write(lengthBuf)
+
+		// 메시지 본문을 보냅니다
+		conn.Write(response)
+	}
+}
+
+func processMessage(message *pb.PlayerPosition) {
 }
