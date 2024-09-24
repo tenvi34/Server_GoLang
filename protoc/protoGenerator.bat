@@ -6,7 +6,7 @@ echo Current directory: %CD%
 
 REM Run protoc command
 echo Generating Go code from Protobuf...
-protoc --csharp_out="C:\Unity_Project\My project_Server\Assets\Script" *.proto
+protoc --csharp_out="C:\Unity_Project\My project_Server\Assets\Scripts" *.proto
 protoc --go_out=../../ *.proto
 
 REM Check if the command was successful

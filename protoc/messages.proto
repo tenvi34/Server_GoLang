@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package game;
 
-option go_package = "Server_TCP/messages";
+option go_package = "golangtcp/messages";
 
 message PlayerPosition {
   float x = 1;
@@ -16,9 +16,14 @@ message ChatMessage {
   string content = 2;
 }
 
+message LoginMessage {
+  string playerId = 1;    
+}
+
 message GameMessage {
   oneof message {
     PlayerPosition player_position = 1;
     ChatMessage chat = 2;
+    LoginMessage login = 3;
   }
-}
+} 

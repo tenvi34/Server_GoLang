@@ -11,7 +11,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var playerManager *PlayerManager
+
 func main() {
+
+	playerManager = NewPlayerManager()
+
 	listener, err := net.Listen("tcp", ":8888")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
@@ -39,7 +44,7 @@ func handleConnection(conn net.Conn) {
 			log.Printf("Failed to read message length: %v", err)
 			return
 		}
-		length := binary.BigEndian.Uint32(lengthBuf)
+		length := binary.LittleEndian.Uint32(lengthBuf)
 
 		// 메시지 본문을 읽습니다
 		messageBuf := make([]byte, length)
@@ -80,8 +85,11 @@ func processMessage(message *pb.GameMessage) {
 	switch msg := message.Message.(type) {
 	case *pb.GameMessage_PlayerPosition:
 		pos := msg.PlayerPosition
-		fmt.Println("(%f, %f, %f)", pos.X, pos.Y, pos.Z)
+		fmt.Println("Position : ", pos.X, pos.Y, pos.Z)
 	case *pb.GameMessage_Chat:
+	case *pb.GameMessage_Login:
+		playerId := msg.Login.PlayerId
+		playerManager.AddPlayer(playerId, 0)
 	default:
 		panic(fmt.Sprintf("unexpected messages.isGameMessage_Message: %#v", msg))
 	}
