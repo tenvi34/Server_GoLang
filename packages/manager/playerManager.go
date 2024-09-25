@@ -1,14 +1,18 @@
-package main
+package manager
 
 import (
 	"errors"
+	"net"
 )
+
+var playerManager *PlayerManager
 
 // Player represents a single player with some attributes
 type Player struct {
 	ID   int
 	Name string
 	Age  int
+	Conn *net.Conn
 }
 
 // PlayerManager manages a list of players
@@ -18,20 +22,26 @@ type PlayerManager struct {
 }
 
 // NewPlayerManager creates a new PlayerManager
-func NewPlayerManager() *PlayerManager {
-	return &PlayerManager{
-		players: make(map[int]Player),
-		nextID:  1,
+func GetPlayerManager() *PlayerManager {
+	if playerManager == nil {
+		playerManager = &PlayerManager{
+			players: make(map[int]Player),
+			nextID:  1,
+		}
 	}
+
+	return playerManager
 }
 
 // AddPlayer adds a new player to the manager
-func (pm *PlayerManager) AddPlayer(name string, age int) Player {
+func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player {
 	player := Player{
 		ID:   pm.nextID,
 		Name: name,
 		Age:  age,
+		Conn: conn,
 	}
+
 	pm.players[pm.nextID] = player
 	pm.nextID++
 	return player

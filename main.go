@@ -9,13 +9,11 @@ import (
 	pb "Server_TCP/messages"
 
 	"google.golang.org/protobuf/proto"
+
+	mg "Server_TCP/packages/manager"
 )
 
-var playerManager *PlayerManager
-
 func main() {
-
-	playerManager = NewPlayerManager()
 
 	listener, err := net.Listen("tcp", ":8888")
 	if err != nil {
@@ -63,7 +61,7 @@ func handleConnection(conn net.Conn) {
 		}
 
 		// 메시지 처리
-		processMessage(message)
+		processMessage(message, &conn)
 
 		// 응답 메시지 생성 및 전송 (예: 에코)
 		response, err := proto.Marshal(message)
@@ -73,7 +71,7 @@ func handleConnection(conn net.Conn) {
 		}
 
 		// 메시지 길이를 먼저 보냅니다
-		binary.BigEndian.PutUint32(lengthBuf, uint32(len(response)))
+		binary.LittleEndian.PutUint32(lengthBuf, uint32(len(response)))
 		conn.Write(lengthBuf)
 
 		// 메시지 본문을 보냅니다
@@ -81,15 +79,19 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func processMessage(message *pb.GameMessage) {
+func processMessage(message *pb.GameMessage, conn *net.Conn) {
 	switch msg := message.Message.(type) {
 	case *pb.GameMessage_PlayerPosition:
 		pos := msg.PlayerPosition
 		fmt.Println("Position : ", pos.X, pos.Y, pos.Z)
 	case *pb.GameMessage_Chat:
+		chat := msg.Chat
+		mg.GetChatManager().Broadcast(chat.Sender, chat.Content)
 	case *pb.GameMessage_Login:
 		playerId := msg.Login.PlayerId
-		playerManager.AddPlayer(playerId, 0)
+		fmt.Println(playerId)
+		playerManager := mg.GetPlayerManager()
+		playerManager.AddPlayer(playerId, 0, conn)
 	default:
 		panic(fmt.Sprintf("unexpected messages.isGameMessage_Message: %#v", msg))
 	}
