@@ -1,8 +1,15 @@
 package manager
 
 import (
+	"encoding/binary"
 	"errors"
+	"log"
+
+	pb "Server_TCP/messages"
+
 	"net"
+
+	"google.golang.org/protobuf/proto"
 )
 
 var playerManager *PlayerManager
@@ -45,6 +52,36 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player 
 	pm.players[pm.nextID] = player
 	pm.nextID++
 	return player
+}
+
+func (pm *PlayerManager) MovePlayer(name string, x float32, y float32, z float32) {
+	gameMessage := &pb.GameMessage{
+		Message: &pb.GameMessage_PlayerPosition{
+			PlayerPosition: &pb.PlayerPosition{
+				PlayerId: name,
+				X:        x,
+				Y:        y,
+				Z:        z,
+			},
+		},
+	}
+
+	response, err := proto.Marshal(gameMessage)
+	if err != nil {
+		log.Printf("Failed to marshal response: %v", err)
+		return
+	}
+
+	for _, player := range pm.players {
+		if player.Name == name {
+			continue
+		}
+
+		lengthBuf := make([]byte, 4)
+		binary.LittleEndian.PutUint32(lengthBuf, uint32(len(response)))
+		lengthBuf = append(lengthBuf, response...)
+		(*player.Conn).Write(lengthBuf)
+	}
 }
 
 // GetPlayer retrieves a player by ID

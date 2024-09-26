@@ -30,21 +30,21 @@ func GetChatManager() *ChatManager {
 
 // AddPlayer adds a new player to the manager
 func (pm *ChatManager) Broadcast(name string, content string) {
-	for _, player := range GetPlayerManager().ListPlayers() {
-		gameMessage := &pb.GameMessage{
-			Message: &pb.GameMessage_Chat{
-				Chat: &pb.ChatMessage{
-					Sender:  name,
-					Content: content,
-				},
+	gameMessage := &pb.GameMessage{
+		Message: &pb.GameMessage_Chat{
+			Chat: &pb.ChatMessage{
+				Sender:  name,
+				Content: content,
 			},
-		}
-		response, err := proto.Marshal(gameMessage)
-		if err != nil {
-			log.Printf("Failed to marshal response: %v", err)
-			continue
-		}
+		},
+	}
+	response, err := proto.Marshal(gameMessage)
+	if err != nil {
+		log.Printf("Failed to marshal response: %v", err)
+		return
+	}
 
+	for _, player := range GetPlayerManager().ListPlayers() {
 		lengthBuf := make([]byte, 4)
 		binary.LittleEndian.PutUint32(lengthBuf, uint32(len(response)))
 		lengthBuf = append(lengthBuf, response...)

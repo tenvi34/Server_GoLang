@@ -62,20 +62,6 @@ func handleConnection(conn net.Conn) {
 
 		// 메시지 처리
 		processMessage(message, &conn)
-
-		// 응답 메시지 생성 및 전송 (예: 에코)
-		response, err := proto.Marshal(message)
-		if err != nil {
-			log.Printf("Failed to marshal response: %v", err)
-			continue
-		}
-
-		// 메시지 길이를 먼저 보냅니다
-		binary.LittleEndian.PutUint32(lengthBuf, uint32(len(response)))
-		conn.Write(lengthBuf)
-
-		// 메시지 본문을 보냅니다
-		conn.Write(response)
 	}
 }
 
@@ -84,6 +70,7 @@ func processMessage(message *pb.GameMessage, conn *net.Conn) {
 	case *pb.GameMessage_PlayerPosition:
 		pos := msg.PlayerPosition
 		fmt.Println("Position : ", pos.X, pos.Y, pos.Z)
+		mg.GetPlayerManager().MovePlayer(pos.PlayerId, pos.X, pos.Y, pos.Z)
 	case *pb.GameMessage_Chat:
 		chat := msg.Chat
 		mg.GetChatManager().Broadcast(chat.Sender, chat.Content)
