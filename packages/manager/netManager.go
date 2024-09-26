@@ -21,7 +21,7 @@ func GetNetManager() *NetManager {
 	return netManager
 }
 
-func MakePacket(msg *pb.GameMessage) []byte {
+func (nm *NetManager) MakePacket(msg *pb.GameMessage) []byte {
 	response, err := proto.Marshal(msg)
 	if err != nil {
 		log.Printf("Failed to marshal response: %v", err)
