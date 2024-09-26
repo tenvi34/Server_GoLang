@@ -30,6 +30,10 @@ message ChatMessage {
 }
 
 message LoginMessage {
+  string playerId = 1;
+}
+
+message LogoutMessage {
   string playerId = 1;    
 }
 
@@ -40,5 +44,6 @@ message GameMessage {
     LoginMessage login = 3;
     SpawnMyPlayer spawnMyPlayer = 4;
     SpawnOtherPlayer spawnOtherPlayer = 5;
+    LogoutMessage logout = 6;
   }
 } 

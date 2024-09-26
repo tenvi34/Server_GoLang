@@ -79,6 +79,10 @@ func processMessage(message *pb.GameMessage, conn *net.Conn) {
 		fmt.Println(playerId)
 		playerManager := mg.GetPlayerManager()
 		playerManager.AddPlayer(playerId, 0, conn)
+	case *pb.GameMessage_Logout:
+		playerId := msg.Logout.PlayerId
+		playerManager := mg.GetPlayerManager()
+		playerManager.RemovePlayer(playerId)
 	default:
 		panic(fmt.Sprintf("unexpected messages.isGameMessage_Message: %#v", msg))
 	}

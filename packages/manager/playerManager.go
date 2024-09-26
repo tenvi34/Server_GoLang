@@ -20,11 +20,14 @@ type Player struct {
 	Name string
 	Age  int
 	Conn *net.Conn
+	X    float32
+	Y    float32
+	Z    float32
 }
 
 // PlayerManager manages a list of players
 type PlayerManager struct {
-	players map[int]Player
+	players map[string]*Player
 	nextID  int
 }
 
@@ -32,7 +35,7 @@ type PlayerManager struct {
 func GetPlayerManager() *PlayerManager {
 	if playerManager == nil {
 		playerManager = &PlayerManager{
-			players: make(map[int]Player),
+			players: make(map[string]*Player),
 			nextID:  1,
 		}
 	}
@@ -41,7 +44,7 @@ func GetPlayerManager() *PlayerManager {
 }
 
 // AddPlayer adds a new player to the manager
-func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player {
+func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) *Player {
 	player := Player{
 		ID:   pm.nextID,
 		Name: name,
@@ -49,15 +52,20 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player 
 		Conn: conn,
 	}
 
-	pm.players[pm.nextID] = player
+	pm.players[name] = &player
 	pm.nextID++
 
+	player.X = 0
+	player.Y = 0
+	player.Z = 0
+
+	// 내가 로그인 되었음을 나한테 알려준다.
 	myPlayerSapwn := &pb.GameMessage{
 		Message: &pb.GameMessage_SpawnMyPlayer{
 			SpawnMyPlayer: &pb.SpawnMyPlayer{
-				X: 0,
-				Y: 0,
-				Z: 0,
+				X: player.X,
+				Y: player.Y,
+				Z: player.Z,
 			},
 		},
 	}
@@ -69,23 +77,25 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player 
 		Message: &pb.GameMessage_SpawnOtherPlayer{
 			SpawnOtherPlayer: &pb.SpawnOtherPlayer{
 				PlayerId: name,
-				X:        0,
-				Y:        0,
-				Z:        0,
+				X:        player.X,
+				Y:        player.Y,
+				Z:        player.Z,
 			},
 		},
 	}
 
-	response = GetNetManager().MakePacket(otherPlayerSpawnPacket)
-
+	// 이 코드를 들어온 유저를 제외한 플레이어들에게 스폰시켜달라고 한다.
 	for _, p := range pm.players {
 		if p.Name == name {
 			continue
 		}
 
+		response = GetNetManager().MakePacket(otherPlayerSpawnPacket)
+
 		(*p.Conn).Write(response)
 	}
 
+	// 다른 플레이어의 위치정보를 접속한 인원에게 보낸다.
 	for _, p := range pm.players {
 		if p.Name == name {
 			continue
@@ -95,9 +105,9 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player 
 			Message: &pb.GameMessage_SpawnOtherPlayer{
 				SpawnOtherPlayer: &pb.SpawnOtherPlayer{
 					PlayerId: p.Name,
-					X:        0,
-					Y:        0,
-					Z:        0,
+					X:        p.X,
+					Y:        p.Y,
+					Z:        p.Z,
 				},
 			},
 		}
@@ -107,10 +117,13 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player 
 		(*player.Conn).Write(response)
 	}
 
-	return player
+	return &player
 }
 
 func (pm *PlayerManager) MovePlayer(name string, x float32, y float32, z float32) {
+
+	print(name, x, y, z)
+
 	gameMessage := &pb.GameMessage{
 		Message: &pb.GameMessage_PlayerPosition{
 			PlayerPosition: &pb.PlayerPosition{
@@ -121,6 +134,10 @@ func (pm *PlayerManager) MovePlayer(name string, x float32, y float32, z float32
 			},
 		},
 	}
+
+	pm.players[name].X = x
+	pm.players[name].Y = y
+	pm.players[name].Z = y
 
 	response, err := proto.Marshal(gameMessage)
 	if err != nil {
@@ -141,26 +158,42 @@ func (pm *PlayerManager) MovePlayer(name string, x float32, y float32, z float32
 }
 
 // GetPlayer retrieves a player by ID
-func (pm *PlayerManager) GetPlayer(id int) (Player, error) {
+func (pm *PlayerManager) GetPlayer(id string) (*Player, error) {
 	player, exists := pm.players[id]
 	if !exists {
-		return Player{}, errors.New("player not found")
+		return nil, errors.New("player not found")
 	}
 	return player, nil
 }
 
 // RemovePlayer removes a player by ID
-func (pm *PlayerManager) RemovePlayer(id int) error {
+func (pm *PlayerManager) RemovePlayer(id string) error {
 	if _, exists := pm.players[id]; !exists {
 		return errors.New("player not found")
 	}
 	delete(pm.players, id)
+
+	logoutPacket := &pb.GameMessage{
+		Message: &pb.GameMessage_Logout{
+			Logout: &pb.LogoutMessage{
+				PlayerId: id,
+			},
+		},
+	}
+
+	response := GetNetManager().MakePacket(logoutPacket)
+
+	// 이 코드를 들어온 유저를 제외한 플레이어들에게 스폰시켜달라고 한다.
+	for _, p := range pm.players {
+		(*p.Conn).Write(response)
+	}
+
 	return nil
 }
 
 // ListPlayers returns all players in the manager
-func (pm *PlayerManager) ListPlayers() []Player {
-	playerList := []Player{}
+func (pm *PlayerManager) ListPlayers() []*Player {
+	playerList := []*Player{}
 	for _, player := range pm.players {
 		playerList = append(playerList, player)
 	}
