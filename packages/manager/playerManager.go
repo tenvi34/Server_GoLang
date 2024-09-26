@@ -78,10 +78,31 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player 
 
 	response = GetNetManager().MakePacket(otherPlayerSpawnPacket)
 
-	for _, player := range pm.players {
-		if player.Name == name {
+	for _, p := range pm.players {
+		if p.Name == name {
 			continue
 		}
+
+		(*p.Conn).Write(response)
+	}
+
+	for _, p := range pm.players {
+		if p.Name == name {
+			continue
+		}
+
+		otherPlayerSpawnPacket := &pb.GameMessage{
+			Message: &pb.GameMessage_SpawnOtherPlayer{
+				SpawnOtherPlayer: &pb.SpawnOtherPlayer{
+					PlayerId: p.Name,
+					X:        0,
+					Y:        0,
+					Z:        0,
+				},
+			},
+		}
+
+		response = GetNetManager().MakePacket(otherPlayerSpawnPacket)
 
 		(*player.Conn).Write(response)
 	}
