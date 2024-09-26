@@ -51,6 +51,41 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) Player 
 
 	pm.players[pm.nextID] = player
 	pm.nextID++
+
+	myPlayerSapwn := &pb.GameMessage{
+		Message: &pb.GameMessage_SpawnMyPlayer{
+			SpawnMyPlayer: &pb.SpawnMyPlayer{
+				X: 0,
+				Y: 0,
+				Z: 0,
+			},
+		},
+	}
+
+	response := MakePacket(myPlayerSapwn)
+	(*player.Conn).Write(response)
+
+	otherPlayerSpawnPacket := &pb.GameMessage{
+		Message: &pb.GameMessage_SpawnOtherPlayer{
+			SpawnOtherPlayer: &pb.SpawnOtherPlayer{
+				PlayerId: name,
+				X:        0,
+				Y:        0,
+				Z:        0,
+			},
+		},
+	}
+
+	response = MakePacket(otherPlayerSpawnPacket)
+
+	for _, player := range pm.players {
+		if player.Name == name {
+			continue
+		}
+
+		(*player.Conn).Write(response)
+	}
+
 	return player
 }
 
