@@ -68,15 +68,12 @@ func handleConnection(conn net.Conn) {
 func processMessage(message *pb.GameMessage, conn *net.Conn) {
 	switch msg := message.Message.(type) {
 	case *pb.GameMessage_PlayerPosition:
-		pos := msg.PlayerPosition
-		fmt.Println("Position : ", pos.X, pos.Y, pos.Z)
-		mg.GetPlayerManager().MovePlayer(pos.PlayerId, pos.X, pos.Y, pos.Z)
+		mg.GetPlayerManager().MovePlayer(msg)
 	case *pb.GameMessage_Chat:
 		chat := msg.Chat
 		mg.GetChatManager().Broadcast(chat.Sender, chat.Content)
 	case *pb.GameMessage_Login:
 		playerId := msg.Login.PlayerId
-		fmt.Println(playerId)
 		playerManager := mg.GetPlayerManager()
 		playerManager.AddPlayer(playerId, 0, conn)
 	case *pb.GameMessage_Logout:

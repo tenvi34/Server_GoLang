@@ -2,13 +2,17 @@ syntax = "proto3";
 
 package game;
 
-option go_package = "Server_TCP/messages";
+option go_package = "golangtcp/messages";
 
 message PlayerPosition {
   float x = 1;
   float y = 2;
   float z = 3;
-  string player_id = 4;
+  float fx = 4;
+  float fy = 5;
+  float fz = 6;
+  string player_id = 7;
+  float speed = 8;
 }
 
 message SpawnMyPlayer {
@@ -30,7 +34,7 @@ message ChatMessage {
 }
 
 message LoginMessage {
-  string playerId = 1;
+  string playerId = 1;    
 }
 
 message LogoutMessage {

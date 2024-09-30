@@ -120,33 +120,22 @@ func (pm *PlayerManager) AddPlayer(name string, age int, conn *net.Conn) *Player
 	return &player
 }
 
-func (pm *PlayerManager) MovePlayer(name string, x float32, y float32, z float32) {
+func (pm *PlayerManager) MovePlayer(p *pb.GameMessage_PlayerPosition) {
+	pm.players[p.PlayerPosition.PlayerId].X = p.PlayerPosition.X
+	pm.players[p.PlayerPosition.PlayerId].Y = p.PlayerPosition.Y
+	pm.players[p.PlayerPosition.PlayerId].Z = p.PlayerPosition.Z
 
-	print(name, x, y, z)
+	response, err := proto.Marshal(&pb.GameMessage{
+		Message: p,
+	})
 
-	gameMessage := &pb.GameMessage{
-		Message: &pb.GameMessage_PlayerPosition{
-			PlayerPosition: &pb.PlayerPosition{
-				PlayerId: name,
-				X:        x,
-				Y:        y,
-				Z:        z,
-			},
-		},
-	}
-
-	pm.players[name].X = x
-	pm.players[name].Y = y
-	pm.players[name].Z = y
-
-	response, err := proto.Marshal(gameMessage)
 	if err != nil {
 		log.Printf("Failed to marshal response: %v", err)
 		return
 	}
 
 	for _, player := range pm.players {
-		if player.Name == name {
+		if player.Name == p.PlayerPosition.PlayerId {
 			continue
 		}
 
